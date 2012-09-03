@@ -19,92 +19,105 @@
 #
 #  If you're having any problems, don't hesitate to contact: andrew@andrewgee.org
 #   
-import xml.dom.minidom as minidom
+
+try:
+	from xml.etree import cElementTree as ET
+except ImportError:
+	from xml.etree import ElementTree as ET  # NOQA
+
 from utils.iso8601 import parse_date as parse_xml_date
 
 __all__ = ["import_gpx_trace"]
+
+
+GPX_NS = '{http://www.topografix.com/GPX/1/1}'
 
 
 class ParseError(Exception):
     """Raised when there is a problem parsing any part of the GPX XML"""
     pass
 
+
+def match_node(node, tag):
+	return node.tag == GPX_NS + tag
+
+
 def fetch_metadata(node):
 	metadata = {}
-	for mnode in node.childNodes:	
-		if mnode.nodeName == "name":
-			metadata['name'] = mnode.childNodes[0].nodeValue
+	for mnode in node.getchildren():
+		if match_node(mnode, 'name'):
+			metadata['name'] = mnode.text
 			
-		elif mnode.nodeName == "desc":
+		elif match_node(mnode, 'desc'):
 			try:
-				metadata['description'] = mnode.childNodes[0].nodeValue
+				metadata['description'] = mnode.text
 			except:
 				metadata['description'] = "" #no description
 			
-		elif mnode.nodeName == "time":
-			metadata['time'] = mnode.childNodes[0].nodeValue
+		elif match_node(mnode, 'time'):
+			metadata['time'] = mnode.tag
 			
-		elif mnode.nodeName == "author":
+		elif match_node(mnode, 'author'):
 			metadata['author'] = {}
-			for anode in mnode.childNodes:
-				if anode.nodeName == "name":
-					metadata['author']['name'] = anode.childNodes[0].nodeValue
-				elif anode.nodeName == "email":
-					metadata['author']['email'] = anode.childNodes[0].nodeValue
-				elif anode.nodeName == "link":
-					metadata['author']['link'] = anode.childNodes[0].nodeValue
+			for anode in mnode.getchildren():
+				if match_node(anode, 'name'):
+					metadata['author']['name'] = anode.text
+				elif match_node(anode, 'email'):
+					metadata['author']['email'] = anode.text
+				elif match_node(anode, 'link'):
+					metadata['author']['link'] = anode.text
 					
-		elif mnode.nodeName == "copyright":
+		elif match_node(mnode, 'copyright'):
 			metadata['copyright'] = {}
-			if mnode.attributes["author"].value != "":
-				metadata['copyright']['author'] = mnode.attributes["author"].value
-			for cnode in mnode.childNodes:
-				if cnode.nodeName == "year":
-					metadata['copyright']['year'] = cnode.childNodes[0].nodeValue
-				elif cnode.nodeName == "license":
-					metadata['copyright']['license'] = cnode.childNodes[0].nodeValue
+			if mnode.get('author'):
+				metadata['copyright']['author'] = mnode.get('author')
+			for cnode in mnode.getchildren():
+				if match_node(cnode, 'year'):
+					metadata['copyright']['year'] = cnode.text
+				elif match_node(cnode, 'license'):
+					metadata['copyright']['license'] = cnode.text
 					
-		elif mnode.nodeName == "link":
+		elif match_node(mnode, 'link'):
 			metadata['link'] = {}
-			if mnode.attributes["href"].value != "":
-				metadata['link']['href'] = mnode.attributes["href"].value
-			for lnode in mnode.childNodes:
-				if lnode.nodeName == "text":
-					metadata['link']['text'] = lnode.childNodes[0].nodeValue
-				elif lnode.nodeName == "type":
-					metadata['link']['type'] = lnode.childNodes[0].nodeValue
+			if mnode.get('href'):
+				metadata['link']['href'] = mnode.get('href')
+			for lnode in mnode.getchildren():
+				if match_node(lnode, 'text'):
+					metadata['link']['text'] = lnode.text
+				elif match_node(lnode, 'type'):
+					metadata['link']['type'] = lnode.text
 					
-		elif mnode.nodeName == "time":
-			metadata['time'] = parse_xml_date(mnode.childNodes[0].nodeValue)
+		elif match_node(mnode, 'time'):
+			metadata['time'] = parse_xml_date(mnode.text)
 					
-		elif mnode.nodeName == "keywords":
-			metadata['keywords'] = mnode.childNodes[0].nodeValue
+		elif match_node(mnode, 'keywords'):
+			metadata['keywords'] = mnode.text
 		
 	return metadata
 	
 def fetch_track_point(tsnode):
 	point = {}
-	if tsnode.attributes["lat"] != "" and tsnode.attributes["lon"] != "":
-		point['lat'] = float(tsnode.attributes["lat"].value)
-		point['lon'] = float(tsnode.attributes["lon"].value)
+	if tsnode.get('lat') and tsnode.get('lon'):
+		point['lat'] = float(tsnode.get('lat'))
+		point['lon'] = float(tsnode.get('lon'))
 	
-	for tpnode in tsnode.childNodes:
-		if tpnode.nodeName == "ele":
-			point['ele'] = float(tpnode.childNodes[0].nodeValue)
-		elif tpnode.nodeName == "desc":
-			point['description'] = tpnode.childNodes[0].nodeValue
-		elif tpnode.nodeName == "time":
-			point['time'] = parse_xml_date(tpnode.childNodes[0].nodeValue)
-		elif tpnode.nodeName == "name":
-			point['name'] = tpnode.childNodes[0].nodeValue
+	for tpnode in tsnode.getchildren():
+		if match_node(tpnode, 'ele'):
+			point['ele'] = float(tpnode.text)
+		elif match_node(tpnode, 'desc'):
+			point['description'] = tpnode.text
+		elif match_node(tpnode, 'time'):
+			point['time'] = parse_xml_date(tpnode.text)
+		elif match_node(tpnode, 'name'):
+			point['name'] = tpnode.text
 		
 	return point
 	
 def fetch_track_segment(tnode):
 	trkseg = {}
 	trkseg['points'] = []
-	for tsnode in tnode.childNodes:
-		if tsnode.nodeName == "trkpt":
+	for tsnode in tnode.getchildren():
+		if match_node(tsnode, 'trkpt'):
 			trkseg['points'].append(fetch_track_point(tsnode))
 	
 	return trkseg
@@ -112,8 +125,8 @@ def fetch_track_segment(tnode):
 def fetch_track(node):
 	track = {}
 	track['segments'] = []
-	for tnode in node.childNodes:
-		if tnode.nodeName == "trkseg":
+	for tnode in node.getchildren():
+		if match_node(tnode, 'trkseg'):
 		  track_segment = fetch_track_segment(tnode)
 		  if len(track_segment['points']) > 0:
 		    track['segments'].append(fetch_track_segment(tnode))
@@ -121,11 +134,11 @@ def fetch_track(node):
 	return track
 	
 def import_gpx_trace(filename):
-	doc = minidom.parse(filename)
+	doc = ET.parse(filename)
 
-	doce = doc.documentElement
+	doce = doc.getroot()
 
-	if doce.nodeName != "gpx":
+	if not match_node(doce, 'gpx'):
 		raise Exception
 		
 	trace = {}
@@ -133,11 +146,11 @@ def import_gpx_trace(filename):
 	trace['tracks'] = []
 	
 	try:
-		e = doce.childNodes
+		e = doce.getchildren()
 		for node in e:
-			if node.nodeName == "metadata":
+			if match_node(node, 'metadata'):
 				trace['metadata'] = fetch_metadata(node)
-			elif node.nodeName == "trk":
+			elif match_node(node, 'trk'):
 				trace['tracks'].append(fetch_track(node))
 	except:
 		raise Exception
