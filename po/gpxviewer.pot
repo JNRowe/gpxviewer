@@ -61,7 +61,7 @@ msgstr ""
 
 #: ../gpxviewer/ui.py:428
 #, python-format
-msgid "<b>Duration:</b> %(minutes)s minutes, %(seconds)s seconds"
+msgid "<b>Duration:</b> %(hours)s hours, %(minutes)s minutes, %(seconds)s seconds"
 msgstr ""
 
 #: ../gpxviewer/ui.py:431
