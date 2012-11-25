@@ -42,6 +42,6 @@ ui_dir = os.path.join(parent_dir, "ui/")
 
 gui = MainWindow(
 		ui_dir=ui_dir,
-		files=files
+		files=sorted(files, reverse=True),
 ).main()
 
