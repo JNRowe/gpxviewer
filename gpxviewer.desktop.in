@@ -4,5 +4,5 @@ Type=Application
 _Comment=GPS Trace Viewer
 Exec=gpxviewer
 Icon=gpxviewer
-Categories=Network
-MimeType=application/xml
+Categories=Network;
+MimeType=application/xml;
